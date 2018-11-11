@@ -25,7 +25,7 @@ def readCSV(filename):
 
     try:
         with open(filename, 'r') as f:
-            lines = f.readlines()[1:] #Starts reading from second line
+            lines = f.readlines()[1:]  # Starts reading from second line
     except Exception as e:
         print("\n\nFile not found")
         print("Please place your file in the same directory or provide an absolute path")
@@ -60,7 +60,7 @@ def readCSV(filename):
                     # coords = np.array([[region[1],region[2]],[region[3],region[4]],[region[5],region[6]],[region[7],region[8]]])
                     coords = np.array([[region[i],region[i+1]] for i in range(1,9,2)])
                     coords = coords.reshape((-1,1,2))
-                    image = cv2.polylines(image,[coords],True,colors[i],3)
+                    image = cv2.polylines(image, [coords],True,colors[i],3)
 
             cv2.namedWindow(fileName,cv2.WINDOW_NORMAL)
             cv2.resizeWindow(fileName,(2000,2000))

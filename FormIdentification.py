@@ -6,13 +6,10 @@ from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.ensemble import AdaBoostClassifier
-import pandas as pd
 
 
 # declaring variables
-TRAINING_DATA_IMG_PATH = "data/train/"
-TEST_DATA_IMG_PATH = "data/test/img/"
-TEST_DATA_LABEL_PATH = "data/test/labels_6_breed.csv"
+TRAINING_DATA_IMG_PATH = "input/align/"
 
 
 def load_data_set(feat_detect):
@@ -21,26 +18,21 @@ def load_data_set(feat_detect):
     :param feat_detect: feature detector to use
     :return: training and test data set containing list of features
     """
-    test_data_label = pd.read_csv(TEST_DATA_LABEL_PATH)
-    training_data = []
-    test_data = []
+    data = []
 
-    print("Loading Training Data .....")
+    print("Loading Data .....")
     folder_list = os.listdir(TRAINING_DATA_IMG_PATH)
     for folder in folder_list:
         file_list = os.listdir(TRAINING_DATA_IMG_PATH + folder + "/")
         for image_name in file_list:
             img = cv2.imread(TRAINING_DATA_IMG_PATH + folder + "/" + image_name)
             (kp, desc) = get_features(img, feat_detect)
-            training_data.append((desc, folder))
+            data.append((desc, folder))
 
-    print("Loading Test Data .....")
-    for val in test_data_label.values:
-        img = cv2.imread(TEST_DATA_IMG_PATH + val[0] + ".jpg")
-        (kp, desc) = get_features(img, feat_detect)
-        test_data.append((desc, val[1]))
+    random.shuffle(data)
+    partition = int(0.7 * np.shape(data)[0])
+    training_data, test_data = data[:partition], data[partition:]
 
-    random.shuffle(training_data)
     return np.array(training_data), np.array(test_data)
 
 
@@ -51,8 +43,11 @@ def get_features(image, feature_detector):
     :param feature_detector: feature detector to use
     :return: list of key points and features
     """
+    width = 256
     gs_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gs_image = cv2.resize(gs_image, (256, 256))
+    (h, w) = gs_image.shape[:2]
+    new_h = int((width * h) / w)
+    gs_image = cv2.resize(gs_image, (width, new_h))
     kp, descriptors = feature_detector.detectAndCompute(gs_image, mask=None)
     if descriptors is None:
         return kp, None
@@ -99,8 +94,8 @@ def train_classifier(knn_classifier, svm_classifier, ada_classifier, train_data,
     :param train_label: Training Set Target Variable
     :return: trained classifiers
     """
-    print('Training SVM with AdaBoost Classifier')
-    ada_classifier.fit(train_data, train_label)
+    # print('Training SVM with AdaBoost Classifier')
+    # ada_classifier.fit(train_data, train_label)
     print('Training KNN Classifier')
     knn_classifier.fit(train_data, train_label)
     print('Training SVM Classifier')
@@ -152,7 +147,7 @@ def predict_accuracy(knn_classifier, svm_classifier, ada_classifier, k_means, te
 
     knn_result = knn_classifier.predict(test_feature)
     svm_result2 = svm_classifier.predict(test_feature)
-    ada_result3 = ada_classifier.predict(test_feature)
+    # ada_result3 = ada_classifier.predict(test_feature)
 
     knn_acc = svm_acc = ada_acc = 0
     for l in range(np.shape(test_feature)[0]):
@@ -160,18 +155,18 @@ def predict_accuracy(knn_classifier, svm_classifier, ada_classifier, k_means, te
             knn_acc = knn_acc + 1
         if test_label[l] == svm_result2[l]:
            svm_acc = svm_acc + 1
-        if test_label[l] == ada_result3[l]:
-            ada_acc = ada_acc + 1
+        # if test_label[l] == ada_result3[l]:
+        #     ada_acc = ada_acc + 1
 
     knn_acc = (knn_acc / np.shape(test_feature)[0]) * 100
     svm_acc = (svm_acc / np.shape(test_feature)[0]) * 100
-    ada_acc = (ada_acc / np.shape(test_feature)[0]) * 100
+    # ada_acc = (ada_acc / np.shape(test_feature)[0]) * 100
     print('KNN: ', knn_acc, '%; SVM: ', svm_acc, '%, ADA: ', ada_acc, '%')
 
 
 if __name__ == "__main__":
 
-    k_cluster = 50
+    k_cluster = 70
     print("Initializing Classifiers .....")
     knn_clr, svm_clr, ada_clr, k_means, fd = initializing_classifier(k_cluster)
     training_set, test_set = load_data_set(fd)
