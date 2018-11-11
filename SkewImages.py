@@ -39,8 +39,7 @@ def readCSV(filename, country):
 
 
 def skewImage(img, country):
-    image = cv2.imread(directory + img, cv2.IMREAD_UNCHANGED)
-
+    image = cv2.imread(directory + img, 0)
     scale_percent = 30  # percent of original size
     width = int(image.shape[1] * scale_percent / 100)
     height = int(image.shape[0] * scale_percent / 100)
@@ -85,21 +84,37 @@ def skewImage(img, country):
     # draw the correction angle on the image so we can validate it
 
     rotated = cv2.resize(rotated, dim, interpolation=cv2.INTER_AREA)
-    cv2.putText(rotated, "Angle: {:.2f} degrees".format(angle),
-                (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+    # cv2.putText(rotated, "Angle: {:.2f} degrees".format(angle),
+    #             (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
     # show the output image
     # cv2.imshow("Input " + img + "  " + country, resized)
     # cv2.imshow("Rotated " + img + "  " + country, rotated)
 
     status = cv2.imwrite(directory + "/align/" + country + "/" + img.split(".")[0] + "_align.jpg", rotated)
-    cv2.waitKey(0)
+    gs_image = cv2.imread(directory + "/align/" + country + "/" + img.split(".")[0] + "_align.jpg", 0)
+    kernel = np.ones((5, 5), np.uint8)
+    dilated_image = cv2.dilate(gs_image, kernel, iterations=10)
+    eroded_updated = cv2.erode(dilated_image, kernel, iterations=10)
+    ret, thresh = cv2.threshold(eroded_updated, 127, 255, 0)
+    im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # find the biggest area
+    c = max(contours, key=cv2.contourArea)
+
+    x, y, w, h = cv2.boundingRect(c)
+    # draw the book contour (in green)
+    cv2.rectangle(eroded_updated, (x, y), (x + w, y + h), (255, 255, 0), 2)
+    cropped_img = rotated[y:y + h, x:x + w]
+    status1 = cv2.imwrite(directory + "/align_cropped/" + country + "/" + img.split(".")[0] + "_align_cropped.jpg", cropped_img)
 
 
 def main():
     os.makedirs(directory + "/align", exist_ok=True)
+    os.makedirs(directory + "/align_cropped", exist_ok=True)
     for (csv, country) in csvMap.items():
         os.makedirs(directory + "/align/" + country, exist_ok=True)
+        os.makedirs(directory + "/align_cropped/" + country, exist_ok=True)
         readCSV("extra_docs/" + csv, country)
         print("done with " + country)
 
